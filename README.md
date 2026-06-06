@@ -2,6 +2,8 @@
 
 **Тестовое задание** на Laravel 13.
 
+[![CI](https://github.com/Sergey-Khmelnitsky/TestRest/actions/workflows/ci.yml/badge.svg)](https://github.com/Sergey-Khmelnitsky/TestRest/actions/workflows/ci.yml)
+
 Репозиторий содержит решение двух задач: валидация HTML-постов и rate limiting комментариев с in-memory хранилищем в long-running процессе (Laravel Octane + RoadRunner).
 
 ## Задачи
@@ -87,10 +89,38 @@ composer test
 
 ## CI/CD
 
-- **CI** — при push/PR в `main`: PHPUnit, Pint, сборка фронтенда.
-- **Deploy** — автоматически после успешного CI на `main`, также доступен ручной запуск.
+### CI (основная проверка)
 
-Для деплоя нужны секреты: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`.
+При push/PR в `main` автоматически запускается **CI**:
+
+- PHPUnit (~138 тестов) с PostgreSQL;
+- проверка стиля кода (Pint);
+- сборка фронтенда.
+
+Этого достаточно для проверки тестового задания — **сервер для деплоя не требуется**.
+
+### Deploy (опционально)
+
+Workflow **Deploy (optional)** — шаблон для деплоя на свой сервер. Запускается **только вручную** (Actions → Deploy (optional) → Run workflow).
+
+Если секреты не настроены, workflow завершится успешно с пояснением — это нормально для тестового задания.
+
+Для реального деплоя добавьте в **Settings → Secrets and variables → Actions**:
+
+| Секрет | Описание |
+|--------|----------|
+| `DEPLOY_HOST` | IP или домен сервера |
+| `DEPLOY_USER` | SSH-пользователь |
+| `DEPLOY_SSH_KEY` | Приватный SSH-ключ |
+| `DEPLOY_PATH` | Путь к проекту на сервере |
+| `DEPLOY_PORT` | Необязательно, порт SSH (по умолчанию 22) |
+
+## Для проверяющего
+
+1. **Быстрая проверка** — откройте вкладку [Actions](https://github.com/Sergey-Khmelnitsky/TestRest/actions/workflows/ci.yml): зелёный CI = тесты проходят.
+2. **Локальный запуск** — см. разделы «Установка» и «Запуск» выше. Нужны PHP 8.3+, PostgreSQL, Composer, Node.js.
+3. **Rate limiter** — для проверки ограничения 3 поста / 10 сек запускайте через Octane (`composer run octane`), не через `php artisan serve`.
+4. **Деплой** — не обязателен; при необходимости можно развернуть по инструкции выше на любом VPS с PHP, PostgreSQL и SSH.
 
 ## Лицензия
 
