@@ -31,6 +31,27 @@
             margin-bottom: 16px;
         }
 
+        label {
+            display: block;
+            margin-bottom: 16px;
+            font-size: 15px;
+        }
+
+        input[type="number"] {
+            display: block;
+            width: 100%;
+            margin-top: 6px;
+            padding: 10px 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #666;
+        }
+
         textarea {
             width: 100%;
             min-height: 200px;
@@ -80,6 +101,16 @@
             border: 1px solid #fca5a5;
             color: #991b1b;
         }
+
+        .stats {
+            margin-top: 16px;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            color: #334155;
+        }
     </style>
 </head>
 <body>
@@ -88,6 +119,10 @@
 
         <form method="POST" action="{{ route('posts.store') }}">
             @csrf
+            <label>
+                ID пользователя
+                <input type="number" name="user_id" min="1" value="{{ old('user_id', 1) }}">
+            </label>
             <textarea name="post" placeholder="Введите текст поста...">{{ old('post') }}</textarea>
             <button type="submit">Отправить</button>
         </form>
@@ -95,6 +130,12 @@
         @if (session()->has('message'))
             <div class="message {{ session('valid') ? 'message--success' : 'message--error' }}">
                 {{ session('message') }}
+            </div>
+        @endif
+
+        @if (session()->has('recent_post_count'))
+            <div class="stats">
+                Постов за последние 10 секунд: {{ session('recent_post_count') }} / 3
             </div>
         @endif
     </div>

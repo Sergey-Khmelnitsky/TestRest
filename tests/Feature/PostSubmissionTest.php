@@ -16,17 +16,20 @@ class PostSubmissionTest extends TestCase
         $response->assertOk();
         $response->assertSee('Отправка поста');
         $response->assertSee('name="post"', false);
+        $response->assertSee('name="user_id"', false);
     }
 
     public function test_valid_html_post_is_saved(): void
     {
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => '<strong>Hello</strong>',
         ]);
 
         $response->assertRedirect(route('home'));
         $response->assertSessionHas('valid', true);
         $response->assertSessionHas('message', 'Пост валиден и сохранён');
+        $response->assertSessionHas('recent_post_count', 1);
 
         $this->assertDatabaseCount('posts', 1);
         $this->assertDatabaseHas('posts', [
@@ -37,6 +40,7 @@ class PostSubmissionTest extends TestCase
     public function test_valid_plain_text_post_is_saved(): void
     {
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => 'Hello world',
         ]);
 
@@ -53,6 +57,7 @@ class PostSubmissionTest extends TestCase
         $post = '<a href="https://example.com" title="Example">link</a>';
 
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => $post,
         ]);
 
@@ -69,6 +74,7 @@ class PostSubmissionTest extends TestCase
         $post = '<strong><i><code>x</code></i></strong>';
 
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => $post,
         ]);
 
@@ -83,6 +89,7 @@ class PostSubmissionTest extends TestCase
     public function test_unclosed_tag_is_not_saved(): void
     {
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => '<strong>',
         ]);
 
@@ -96,6 +103,7 @@ class PostSubmissionTest extends TestCase
     public function test_disallowed_tag_is_not_saved(): void
     {
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => '<div>text</div>',
         ]);
 
@@ -108,6 +116,7 @@ class PostSubmissionTest extends TestCase
     public function test_cross_nested_tags_are_not_saved(): void
     {
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => '<i><strong></i></strong>',
         ]);
 
@@ -120,6 +129,7 @@ class PostSubmissionTest extends TestCase
     public function test_bare_less_than_is_not_saved(): void
     {
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => '5 < 10',
         ]);
 
@@ -132,6 +142,7 @@ class PostSubmissionTest extends TestCase
     public function test_empty_post_is_not_saved(): void
     {
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => '',
         ]);
 
@@ -142,11 +153,51 @@ class PostSubmissionTest extends TestCase
         $this->assertDatabaseCount('posts', 0);
     }
 
+    public function test_invalid_user_id_is_rejected(): void
+    {
+        $response = $this->post(route('posts.store'), [
+            'user_id' => 0,
+            'post' => 'Hello world',
+        ]);
+
+        $response->assertRedirect(route('home'));
+        $response->assertSessionHas('valid', false);
+        $response->assertSessionHas('message', 'Укажите корректный ID пользователя');
+
+        $this->assertDatabaseCount('posts', 0);
+    }
+
+    public function test_rate_limit_blocks_fourth_post_within_window(): void
+    {
+        for ($i = 1; $i <= 3; $i++) {
+            $response = $this->post(route('posts.store'), [
+                'user_id' => 42,
+                'post' => "Comment {$i}",
+            ]);
+
+            $response->assertRedirect(route('home'));
+            $response->assertSessionHas('valid', true);
+        }
+
+        $response = $this->post(route('posts.store'), [
+            'user_id' => 42,
+            'post' => 'Comment 4',
+        ]);
+
+        $response->assertRedirect(route('home'));
+        $response->assertSessionHas('valid', false);
+        $response->assertSessionHas('message', 'Слишком много комментариев, подождите 10 секунд');
+        $response->assertSessionHas('recent_post_count', 3);
+
+        $this->assertDatabaseCount('posts', 3);
+    }
+
     public function test_invalid_post_preserves_input(): void
     {
         $post = '<strong>';
 
         $response = $this->post(route('posts.store'), [
+            'user_id' => 1,
             'post' => $post,
         ]);
 

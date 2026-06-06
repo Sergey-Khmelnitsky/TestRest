@@ -6,6 +6,14 @@ use Symfony\Component\Console\Input\ArgvInput;
 
 define('LARAVEL_START', microtime(true));
 
+if (PHP_OS_FAMILY === 'Windows') {
+    foreach (['SIGINT' => 2, 'SIGTERM' => 15, 'SIGHUP' => 1] as $signal => $value) {
+        if (! defined($signal)) {
+            define($signal, $value);
+        }
+    }
+}
+
 // Register the Composer autoloader...
 require __DIR__.'/vendor/autoload.php';
 
