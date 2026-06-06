@@ -1,58 +1,97 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# TestRest
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+**Тестовое задание** на Laravel 13.
 
-## About Laravel
+Репозиторий содержит решение двух задач: валидация HTML-постов и rate limiting комментариев с in-memory хранилищем в long-running процессе (Laravel Octane + RoadRunner).
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Задачи
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+### 1. Валидация постов
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Функция `validatePost(string $post): bool` проверяет HTML по правилам:
 
-## Learning Laravel
+- разрешённые теги: `a`, `code`, `i`, `strike`, `strong`;
+- XHTML-совместимость (нижний регистр, двойные кавычки, без самозакрывающихся тегов);
+- у `<a>` только атрибуты `href` и `title`;
+- корректная вложенность и закрытие тегов;
+- запрет «голого» символа `<` в тексте.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+### 2. Rate limiting комментариев
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+Класс `CommentLimiter` ограничивает отправку постов:
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+- **3 поста за 10 секунд** на одного пользователя (sliding window);
+- периодическая глобальная очистка каждые **60 секунд**;
+- состояние хранится **в памяти** (`static`-свойства), без Redis и БД;
+- для сохранения состояния между запросами используется **Laravel Octane**.
 
-## Agentic Development
+## Стек
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+- PHP 8.3+
+- Laravel 13
+- PostgreSQL
+- Laravel Octane + RoadRunner
+- GitHub Actions (CI/CD)
+
+## Установка
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate
+npm install
+npm run build
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+В `.env` укажите подключение к PostgreSQL:
 
-## Contributing
+```env
+DB_CONNECTION=pgsql
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_DATABASE=testrest
+DB_USERNAME=postgres
+DB_PASSWORD=postgres
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+## Запуск
 
-## Code of Conduct
+### Octane (рекомендуется для rate limiter)
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+```bash
+composer run octane
+```
 
-## Security Vulnerabilities
+Приложение: http://127.0.0.1:8000
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Остановка:
 
-## License
+```bash
+composer run octane:stop
+```
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+### Режим разработки
+
+```bash
+composer dev
+```
+
+## Тесты
+
+```bash
+composer test
+```
+
+Тесты используют PostgreSQL (настройки в `phpunit.xml`).
+
+## CI/CD
+
+- **CI** — при push/PR в `main`: PHPUnit, Pint, сборка фронтенда.
+- **Deploy** — автоматически после успешного CI на `main`, также доступен ручной запуск.
+
+Для деплоя нужны секреты: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY`, `DEPLOY_PATH`.
+
+## Лицензия
+
+MIT
